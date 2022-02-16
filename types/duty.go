@@ -36,7 +36,7 @@ func (d DutyType) String() string {
 // Duty is a unit of consensus agreed upon by the cluster and executed by the distributed validators.
 type Duty struct {
 	// Slot is the Ethereum consensus layer slot.
-	Slot int
+	Slot int64
 	// Type is the duty type performed in the slot.
 	Type DutyType
 }
