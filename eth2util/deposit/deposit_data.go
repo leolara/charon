@@ -16,16 +16,18 @@
 package deposit
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
+	"os"
+	"path"
 
 	eth2p0 "github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
 
 	"github.com/obolnetwork/charon/app/errors"
+	"github.com/obolnetwork/charon/eth2util/signing"
 )
-
-const depositAmt = 32000000000
 
 // depositData contains all the information required for activating validators on the Ethereum Network.
 // Ref: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#depositdata
@@ -82,8 +84,8 @@ func (d depositData) HashTreeRootWith(hh *ssz.Hasher) error {
 	return nil
 }
 
-// MarshalDepositData returns the json serialised deposit data bytes to be written to disk.
-func MarshalDepositData(pubkey eth2p0.BLSPubKey, msgRoot eth2p0.Root, sig eth2p0.BLSSignature, withdrawalAddr, forkVersion string) ([]byte, error) {
+// marshalDepositData returns the json serialised deposit data bytes to be written to disk.
+func marshalDepositData(pubkey eth2p0.BLSPubKey, msgRoot eth2p0.Root, sig eth2p0.BLSSignature, withdrawalAddr, forkVersion string) ([]byte, error) {
 	creds, err := withdrawalCredsFromAddr(withdrawalAddr)
 	if err != nil {
 		return nil, err
@@ -126,6 +128,46 @@ func MarshalDepositData(pubkey eth2p0.BLSPubKey, msgRoot eth2p0.Root, sig eth2p0
 	}
 
 	return resp, nil
+}
+
+// aggregateSignatures aggregates the partial signatures on MessageRoot. It returns both the root that was signed
+// and the aggregated signature.
+func aggregateSignatures(pubkey eth2p0.BLSPubKey, eth2Cl signing.Eth2DomainProvider, withdrawalAddr string) (eth2p0.Root, eth2p0.BLSSignature, error) {
+	msgRoot, err := MessageRoot(pubkey, withdrawalAddr)
+	if err != nil {
+		return eth2p0.Root{}, eth2p0.BLSSignature{}, err
+	}
+
+	_, err = signing.GetDataRoot(context.Background(), eth2Cl, signing.DomainDeposit, 0, msgRoot)
+	if err != nil {
+		return eth2p0.Root{}, eth2p0.BLSSignature{}, err
+	}
+
+	// Sign the signingRoot and send the signature to peers.
+
+	return msgRoot, eth2p0.BLSSignature{}, err
+}
+
+// SaveDepositData saves DepositData to a file.
+func SaveDepositData(pubkey eth2p0.BLSPubKey, eth2Cl signing.Eth2DomainProvider, withdrawalAddr, forkVersion, dataDir string) error {
+	msgRoot, sig, err := aggregateSignatures(pubkey, eth2Cl, withdrawalAddr)
+	if err != nil {
+		return errors.Wrap(err, "aggregate signatures")
+	}
+
+	bytes, err := marshalDepositData(pubkey, msgRoot, sig, withdrawalAddr, forkVersion)
+	if err != nil {
+		return err
+	}
+
+	// save bytes to disk
+	depositFile := "deposit_data.json"
+	err = os.WriteFile(path.Join(dataDir, depositFile), bytes, 0o444)
+	if err != nil {
+		return errors.Wrap(err, "write deposit data file")
+	}
+
+	return nil
 }
 
 // forkVersionToNetwork returns the name of the ethereum network corresponding to a given fork version.

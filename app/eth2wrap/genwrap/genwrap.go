@@ -30,10 +30,11 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/obolnetwork/charon/app/errors"
-	"github.com/obolnetwork/charon/app/log"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
+
+	"github.com/obolnetwork/charon/app/errors"
+	"github.com/obolnetwork/charon/app/log"
 )
 
 var (
