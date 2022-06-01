@@ -15,6 +15,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jonboulle/clockwork v0.3.0
 	github.com/jsternberg/zap-logfmt v1.2.0
+	github.com/leolara/go-event v0.0.0-20220531160828-141fa465d180
 	github.com/libp2p/go-libp2p v0.20.0
 	github.com/libp2p/go-libp2p-core v0.16.1
 	github.com/multiformats/go-multiaddr v0.5.0
@@ -40,6 +41,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
+	github.com/aristanetworks/goarista v0.0.0-20200805130819-fd197cf57d96 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.1 // indirect

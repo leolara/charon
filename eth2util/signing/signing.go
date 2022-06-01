@@ -22,6 +22,9 @@ import (
 	eth2p0 "github.com/attestantio/go-eth2-client/spec/phase0"
 
 	"github.com/obolnetwork/charon/app/errors"
+	"github.com/obolnetwork/charon/core"
+	"github.com/obolnetwork/charon/tbls"
+	"github.com/obolnetwork/charon/tbls/tblsconv"
 )
 
 // DomainName as defined in eth2 spec.
@@ -81,4 +84,38 @@ func GetDataRoot(ctx context.Context, eth2Cl Eth2DomainProvider, name DomainName
 	}
 
 	return msg, nil
+}
+
+func Verify(
+	ctx context.Context,
+	epoch eth2p0.Epoch,
+	pubkey core.PubKey,
+	sigRoot eth2p0.Root,
+	sig eth2p0.BLSSignature,
+	domain DomainName,
+	eth2Cl Eth2DomainProvider,
+) (verified bool, err error) {
+	// Wrap the signing root with the domain and serialise it.
+	sigData, err := GetDataRoot(ctx, eth2Cl, domain, epoch, sigRoot)
+	if err != nil {
+		return false, err
+	}
+
+	// Convert the signature
+	s, err := tblsconv.SigFromETH2(sig)
+	if err != nil {
+		return false, errors.Wrap(err, "convert signature")
+	}
+
+	pubkeyKrypt, err := tblsconv.KeyFromCore(pubkey)
+	if err != nil {
+		return false, errors.Wrap(err, "convert pubkey")
+	}
+
+	ok, err := tbls.Verify(pubkeyKrypt, sigData[:], s)
+	if err != nil {
+		return false, err
+	}
+
+	return ok, nil
 }
